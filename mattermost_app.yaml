@@ -1,0 +1,68 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mattermost-app
+  namespace: mattermost
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mattermost-app
+  template:
+    metadata:
+      labels:
+        app: mattermost-app
+    spec:
+      containers:
+      - name: app
+        image: mattermost/mattermost-prod-app:3
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: localtime
+          mountPath: /etc/localtime
+        - name: mm-config
+          mountPath: /mattermost/config
+        # Uncomment this for production use
+        #
+        # - name: assets
+        #   mountPath: /mattermost/data
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        env:
+        - name: MATTERMOST_ENABLE_SSL
+          value: "false"
+        - name: PLATFORM_PORT_80_TCP_PORT
+          value: "80"
+        - name: DB_HOST
+          value: mattermost-pg
+        - name: MM_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgres-creds
+              key: username
+        - name: MM_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-creds
+              key: password
+      volumes:
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+      - name: mm-config
+        emptyDir: {}
+      # Uncomment for custom config, making sure that config values are updated and `mm-config` above is disabled
+      # - name: mm-config
+      #   configMap:
+      #     name: mattermost-config
+      #     items:
+      #     - key: config.template.json
+      #       path: config.json
+      
+      # Google Cloud Platform Persistent Volume Disk
+      # - name: assets
+      #   gcePersistentDisk:
+      #     pdName: mattermost-assets
+      #     fsType: "ext4"
+      restartPolicy: Always
